@@ -4,16 +4,18 @@ import models.{ZoomAccountsConfigurationModel, ZoomWebhookModel}
 import play.api.Configuration
 import play.api.http.HeaderNames
 import play.api.mvc._
+import services.MqttService
 
 import javax.inject._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
  * application's home page.
  */
 @Singleton
-class HomeController @Inject()(val controllerComponents: ControllerComponents, config: Configuration) extends BaseController {
+class HomeController @Inject()(val controllerComponents: ControllerComponents, config: Configuration, mqttService: MqttService)(implicit ec: ExecutionContext)
+  extends BaseController {
 
   /**
    * Create an Action to render an HTML page.
@@ -36,7 +38,7 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, c
       case None =>
         Future.successful(Results.Unauthorized)
       case Some(()) =>
-        Future.successful(Results.NotImplemented)
+        mqttService.publish(request.body).map(_ => Results.Created)
     }
   }
 
