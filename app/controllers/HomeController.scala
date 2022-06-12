@@ -1,7 +1,6 @@
 package controllers
 
-import models.{ZoomAccountsConfigurationModel, ZoomWebhookModel}
-import play.api.Configuration
+import models.ZoomWebhookModel
 import play.api.http.HeaderNames
 import play.api.mvc._
 import services.MqttService
@@ -14,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * application's home page.
  */
 @Singleton
-class HomeController @Inject()(val controllerComponents: ControllerComponents, config: Configuration, mqttService: MqttService)(implicit ec: ExecutionContext)
+class HomeController @Inject()(val controllerComponents: ControllerComponents, mqttService: MqttService)(implicit ec: ExecutionContext)
   extends BaseController {
 
   /**
@@ -29,11 +28,10 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, c
   }
 
   def webhookNotification(): Action[ZoomWebhookModel.Event] = Action.async(parse.json[ZoomWebhookModel.Event]) { request =>
-    val accountId = request.body.payload.account_id
     (for {
-      accountConfig <- zoomAccountConfigurations.get(accountId)
+      verificationToken <- zoomAccountVerificationToken(request.body.payload.account_id)
       authorizationHeader <- request.headers.get(HeaderNames.AUTHORIZATION)
-      if accountConfig.verificationToken == authorizationHeader
+      if verificationToken == authorizationHeader
     } yield ()) match {
       case None =>
         Future.successful(Results.Unauthorized)
@@ -42,5 +40,6 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, c
     }
   }
 
-  private lazy val zoomAccountConfigurations = config.get[ZoomAccountsConfigurationModel.Config](ZoomAccountsConfigurationModel.ConfigKey)
+  private def zoomAccountVerificationToken(accountId: String): Option[String] =
+    sys.env.get(s"ZWM_${accountId}_VERIFICATION_TOKEN")
 }

@@ -4,7 +4,6 @@ import com.hivemq.client.mqtt.datatypes.{MqttQos, MqttTopic}
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5Publish
 import models.ZoomWebhookModel
-import play.api.Configuration
 import play.api.libs.json.Json
 
 import javax.inject.{Inject, Singleton}
@@ -13,7 +12,9 @@ import scala.jdk.FutureConverters._
 import scala.jdk.OptionConverters._
 
 @Singleton
-class MqttService @Inject()(config: Configuration)(implicit ec: ExecutionContext) {
+class MqttService @Inject()(implicit ec: ExecutionContext) {
+  import MqttService._
+
   private val mqttClient = Mqtt5Client.builder().serverHost(mqttHost).buildAsync()
 
   def publish(zoomEvent: ZoomWebhookModel.Event): Future[Unit] = {
@@ -27,7 +28,9 @@ class MqttService @Inject()(config: Configuration)(implicit ec: ExecutionContext
       _ <- mqttClient.disconnect().asScala
     } yield ()
   }
+}
 
-  private lazy val mqttHost = config.get[String]("mqtt.host")
+object MqttService {
+  private val mqttHost = sys.env.getOrElse("ZWM_MQTT_HOST", "localhost")
   private lazy val topicPrefix = "zoom-webhook"
 }
